@@ -1,5 +1,7 @@
 # TargetForward
 
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/09469784-d973-4c5b-ba35-de77da12d6d8" />
+
 Cast on a teammate's enemy without switching away from your teammate.
 
 TargetForward is an Ashita v4 addon developed for Phoenix XI. Select a friendly player who is fighting an enemy, then use a TargetForward spell macro (Example: /tfor Dia). Your spell goes to their combat target while your selection stays on the friendly player.
