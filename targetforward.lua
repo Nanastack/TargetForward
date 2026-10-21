@@ -1,10 +1,11 @@
 addon.name = 'targetforward';
 addon.author = 'Zarianna';
-addon.version = '1.0.0';
+addon.version = '1.0.1';
 addon.desc = 'Cast enemy spells on a friendly target\'s combat target without changing selection.';
 require('common');
 local bit = require('bit');
 local preflight = require('preflight');
+local targettracker = require('targettracker');
 local lastSend = -math.huge;
 local activeCastUntil;
 -- Ashita chat palette: Magenta (fuchsia), followed by a color reset.
@@ -17,12 +18,11 @@ local function resolve()
     if not friendly or friendly.ServerId == 0 then return nil, 'Select a friendly player first.'; end
     if bit.band(friendly.SpawnFlags, 0x10) ~= 0 then return nil, 'Your selected target is already an enemy.'; end
     if bit.band(friendly.SpawnFlags, 0x01) == 0 then return nil, 'Select a player character.'; end
-    local ti = friendly.TargetedIndex;
-    local enemy = ti and ti > 0 and ti <= 0x8FF and GetEntity(ti);
+    local enemy, ti, cached = targettracker.resolve(friendly, index);
     if not enemy or enemy.ServerId == 0 or bit.band(enemy.SpawnFlags, 0x10) == 0 or enemy.HPPercent == 0 then
         return nil, 'No living enemy combat target is available for ' .. friendly.Name .. '.';
     end
-    return { index = ti, id = enemy.ServerId, name = enemy.Name, friendly = friendly.Name, entity = enemy };
+    return { index = ti, id = enemy.ServerId, name = enemy.Name, friendly = friendly.Name, entity = enemy, cached = cached };
 end
 local function spellByName(name)
     return AshitaCore:GetResourceManager():GetSpellByName(name, 2);
@@ -154,7 +154,7 @@ ashita.events.register('command', 'targetforward_command', function(e)
             say('Automatic forwarding is not supported. Use /tfor "Spell" explicitly.'); return;
         elseif option == 'status' then
             local target, reason = resolve();
-            say(target and (target.friendly .. ' -> ' .. target.name .. ' (index ' .. target.index .. ')') or reason); return;
+            say(target and (target.friendly .. ' -> ' .. target.name .. ' (index ' .. target.index .. (target.cached and ', last hostile' or '') .. ')') or reason); return;
         elseif option == '' or option == 'help' then
             say('/tfor "Dia" | /tfor status | /tfor reload.'); return;
         end
@@ -170,7 +170,9 @@ ashita.events.register('command', 'targetforward_command', function(e)
 
 end);
 ashita.events.register('packet_out', 'targetforward_observe_blue_set', preflight.outgoing);
+ashita.events.register('d3d_present', 'targetforward_sample_party_targets', targettracker.sample);
 ashita.events.register('packet_in', 'targetforward_observe_cast', function(e)
+    targettracker.incoming(e);
     if e.id == 0x0A or e.id == 0x0B then activeCastUntil = nil; lastSend = -math.huge; return; end
     if e.id ~= 0x28 or not e.data or #e.data < 13 then return; end
     local b = {e.data:byte(6, 13)};
