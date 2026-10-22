@@ -1,6 +1,6 @@
 addon.name = 'targetforward';
 addon.author = 'Zarianna';
-addon.version = '1.0.1';
+addon.version = '1.0.2';
 addon.desc = 'Cast enemy spells on a friendly target\'s combat target without changing selection.';
 require('common');
 local bit = require('bit');
@@ -58,13 +58,18 @@ local function validate(spell, target)
             eligible(player:GetSubJob(), player:GetSubJobLevel(), false)) then
         return 'That spell requires a different job/level or an active casting ability (Addendum, Tabula Rasa, etc.).';
     end
-    for _, id in ipairs({2, 6, 7, 10, 14, 28, 29, 193, 262}) do
-        if buffs[id] then return 'A disabling status prevents casting (status ' .. id .. ').'; end
+    local disablingStatuses = {
+        {2, 'Sleep'}, {6, 'Silence'}, {7, 'Petrification'}, {10, 'Stun'},
+        {14, 'Charm'}, {17, 'Charm II'}, {19, 'Sleep II'}, {28, 'Terror'},
+        {29, 'Mute'}, {193, 'Lullaby'}, {262, 'Omerta'},
+    };
+    for _, status in ipairs(disablingStatuses) do
+        if buffs[status[1]] then return 'Cannot cast while affected by ' .. status[2] .. '.'; end
     end
     local specialReason = preflight.special(spell, player, buffs);
     if specialReason then return specialReason; end
     local recast = mm:GetRecast():GetSpellTimer(spell.Index);
-    if recast > 0 then return 'That spell is still on recast.'; end
+    if recast > 0 then return string.format('That spell is still on cooldown (%.1fs remaining).', math.ceil(recast / 6) / 10); end
     -- Cast-bar progress can remain below 100% after completion/interruption.
     -- Block only a cast confirmed by incoming action events, not stale UI data.
     if activeCastUntil and os.clock() < activeCastUntil then return 'You are already casting.'; end

@@ -1,4 +1,4 @@
-# TargetForward
+# TargetForward v1.0.2
 
 <img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/09469784-d973-4c5b-ba35-de77da12d6d8" />
 
